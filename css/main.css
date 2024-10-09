@@ -9,6 +9,12 @@ body
 	background-color: darkgrey;
 }
 
-*{
+*
+{
 	border-radius: 10px;
+}
+
+p
+{
+	color: white;
 }
