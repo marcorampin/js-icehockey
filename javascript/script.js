@@ -1,5 +1,3 @@
-//Find a way to make the text centered (scores)
-
 //Screen size
 let winWidth = window.innerWidth * 0.9;
 let winHeight = window.innerHeight * 0.9;
@@ -27,6 +25,11 @@ let keyM;
 let multiplayer = true;
 let boxUpper = winHeight / 2 - winHeight / 6;
 let boxLower = winHeight / 2 + winHeight / 6;
+let scoreFontSize = Math.min(winWidth, winHeight) * 0.05;
+let multiplayerText;
+let bottomFontSize = Math.min(winWidth, winHeight) * 0.03;
+let controlPlayerText;
+let controlOpponentText;
 
 // Game Configuration
 var config = {
@@ -200,8 +203,16 @@ function create(){
 	keyM = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
 	
 	//Create score display
-	playerScoreText = this.add.text(winWidth * 0.20, 20, 'Player: 0', { fontSize: '30px', fill: '#fff' });
-	opponentScoreText = this.add.text(winWidth * 0.60, 20, 'Opponent: 0', {fontSize: '30px', fill: '#fff'});
+	playerScoreText = this.add.text(winWidth * 0.25, 20, 'Player: 0', { fontSize: scoreFontSize + 'px', fill: '#fff' });
+	opponentScoreText = this.add.text(winWidth * 0.75, 20, 'Opponent: 0', {fontSize: scoreFontSize + 'px', fill: '#fff'});
+	multiplayerText = this.add.text(winWidth * 0.5, winHeight - 20, 'Press M to change multiplayer mode (local - single)', {fontSize: bottomFontSize, fill:'#fff'});
+	controlPlayerText = this.add.text(winWidth * 0.1, winHeight - 20, 'WASD', {fontSize: bottomFontSize, fill:'#fff'});
+	controlOpponentText = this.add.text(winWidth * 0.9, winHeight - 20, 'Arrow keys', {fontSize: bottomFontSize, fill:'#fff'});
+	playerScoreText.setOrigin(0.5, 0.5);
+   opponentScoreText.setOrigin(0.5, 0.5);
+   multiplayerText.setOrigin(0.5, 0.5);
+   controlPlayerText.setOrigin(0.5, 0.5);
+   controlOpponentText.setOrigin(0.5, 0.5);
 }
 
 //Update function for game logic
