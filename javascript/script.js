@@ -1,9 +1,8 @@
-//Need to make a class for field lines (only rectangles across the field)
 //Maybe include a multiplayer (wasd vs arrows)
 //Find a way to make the text centered (scores)
-//Find if it's possible to use two circles and simulate the collision with them instead of paddles
 //Check if other variables are needed
 //Find a way to increase also the vertical speed of the ball (right now, with high speed the vertical component is almost null)
+//Make scores only within the goal boxes and adjust ai to stay closer to the goal box
 
 //Screen size
 let winWidth = window.innerWidth * 0.9;
@@ -60,10 +59,25 @@ class Paddle {
 	
 	//enable physics for paddles
 	set_physics(scene) {
-	this.paddle = scene.add.rectangle(this.pos_x, this.pos_y, this.width, this.height, this.color)
-	scene.physics.add.existing(this.paddle, false);
-	 this.paddle.body.immovable = true;
-	 this.paddle.body.setCollideWorldBounds(true, 1, 1); //Restricts paddles within game bounds
+	this.paddle = scene.add.rectangle(this.pos_x, this.pos_y, this.width, this.height, this.color);
+	}
+}
+
+class Player {
+	constructor(pos_x, pos_y, radius, color){
+		this.pos_x = pos_x;
+		this.pos_y = pos_y;
+		this.radius = radius;
+		this.color = color;
+	}
+	
+	set_physics(scene) {
+		this.paddle = scene.add.circle(this.pos_x, this.pos_y, this.radius, this.color);
+		scene.physics.add.existing(this.paddle);
+		this.paddle.body.setCircle(this.radius); // Set the shape to a circle
+		this.paddle.body.setBounce(bounce_eff, bounce_eff);
+		this.paddle.body.setCollideWorldBounds(true, 1, 1);
+		this.paddle.body.immovable = true;
 	}
 	
 	//decide movements
@@ -91,13 +105,6 @@ class Paddle {
 	moveLeft() {
 		this.paddle.body.setVelocityX(-init_vel * 1.5);
 	}
-	
-	updateResize() {
-		this.pos_x = pos_x;
-		this.pos_y = pos_y;
-		this.width = width;
-		this.height = height;
-	}
 }
 
 class Ball {	
@@ -109,11 +116,11 @@ class Ball {
 	}
 	
 	set_physics(scene) {
-	this.ball = scene.add.circle(this.pos_x, this.pos_y, this.radius, this.color)
-	scene.physics.add.existing(this.ball);
-	this.ball.body.setBounce(bounce_eff, bounce_eff); //X and Y bounce efficiency
-	this.ball.body.setCollideWorldBounds(true, 1, 1); //Ball bounces of walls
-	this.ball.body.maxSpeed = this.pos_x * 1.5;
+		this.ball = scene.add.circle(this.pos_x, this.pos_y, this.radius, this.color);
+		scene.physics.add.existing(this.ball);
+		this.ball.body.setBounce(bounce_eff, bounce_eff); //X and Y bounce efficiency
+		this.ball.body.setCollideWorldBounds(true, 1, 1); //Ball bounces of walls
+		this.ball.body.maxSpeed = this.pos_x * 4;
 	}
 	
 	randomNum() {
@@ -139,6 +146,15 @@ class Ball {
 	}
 }
 
+function goalBoxesCreation(x_init, x_fin, scene) {
+	verticalLine = new Paddle(x_init, winHeight / 2, 5, winHeight / 3, 0xffffff);
+	upperHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, winHeight / 2 - winHeight / 6, Math.abs(x_init - x_fin), 5, 0xffffff);
+	lowerHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, winHeight / 2 + winHeight / 6, Math.abs(x_init - x_fin), 5, 0xffffff);
+	verticalLine.set_physics(scene);
+	upperHorLine.set_physics(scene);
+	lowerHorLine.set_physics(scene);
+}
+
 //Preload function to load game assets (sounds or images)
 function preload(){
 }
@@ -146,18 +162,22 @@ function preload(){
 //Create function to initialize the game
 function create(){	
 	//Add paddles (rectangles)
-	player = new Paddle(paddle_xside, winHeight / 2, paddle_width, paddle_height, 0xffffff);
+	player = new Player(paddle_xside, winHeight / 2, winHeight / 20, 0xffffff);
 	player.set_physics(this);
-	opponent = new Paddle(winWidth - paddle_xside, winHeight / 2, paddle_width, paddle_height, 0xffffff);
+	opponent = new Player(winWidth - paddle_xside, winHeight / 2, winHeight / 20, 0xffffff);
 	opponent.set_physics(this);
 	
 	//Create ball
-	sphere = new Ball(winWidth / 2, winHeight / 2, ball_radius, 0xffffff)
+	sphere = new Ball(winWidth / 2, winHeight / 2, ball_radius, 0xffffff);
 	sphere.set_physics(this); //Makes ball a physics object
 	
 	//Add division in the middle of the field
-	divisor = new Paddle(winWidth / 2, winHeight / 2, 5, winHeight, 0xffffff)
+	divisor = new Paddle(winWidth / 2, winHeight / 2, 5, winHeight, 0xffffff);
 	divisor.set_physics(this);
+	
+	//Add goalbox
+	playerGoalBox = goalBoxesCreation(winWidth * 0.1, 0, this);
+	opponentGoalBox = goalBoxesCreation(winWidth * 0.9, winWidth, this);
 	
 	//Give ball an initial velocity
 	sphere.setVelocity();
@@ -197,10 +217,10 @@ function update() {
 		player.stop('x');
 	}
 	//Simple AI: Move the AI paddle towards the ball
-	if (sphere.ball.y + ball_radius > opponent.paddle.y + opponent.height / 4) {
+	if (sphere.ball.y > opponent.paddle.y + opponent.radius / 2) {
 		opponent.moveDown();
 	}
-	else if (sphere.ball.y - ball_radius < opponent.paddle.y - opponent.height / 4) {
+	else if (sphere.ball.y < opponent.paddle.y - opponent.radius / 2) {
 		opponent.moveUp();
 	}
 	else {
@@ -208,8 +228,8 @@ function update() {
 	}
 	
 	//Adds bounds for paddles to not go over the middle field
-	player.paddle.x = Phaser.Math.Clamp(player.paddle.x, player.width / 2, winWidth / 2 - player.width / 2);
-	opponent.paddle.x = Phaser.Math.Clamp(opponent.paddle.x, winWidth / 2 + opponent.width / 2, winWidth - opponent.width / 2);	
+	player.paddle.x = Phaser.Math.Clamp(player.paddle.x, 0, winWidth / 2 - player.radius);
+	opponent.paddle.x = Phaser.Math.Clamp(opponent.paddle.x, winWidth / 2 + opponent.radius, winWidth);	
 	
 	//Check if ball goes off left or right side to score points
 	if (sphere.ball.x <= 0 + ball_radius * 2) {
