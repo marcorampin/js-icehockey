@@ -1,8 +1,4 @@
-//Maybe include a multiplayer (wasd vs arrows)
 //Find a way to make the text centered (scores)
-//Check if other variables are needed
-//Find a way to increase also the vertical speed of the ball (right now, with high speed the vertical component is almost null)
-//Make scores only within the goal boxes and adjust ai to stay closer to the goal box
 
 //Screen size
 let winWidth = window.innerWidth * 0.9;
@@ -23,6 +19,14 @@ let paddle_width = 20;
 let paddle_height = winHeight / 5;
 var divisor;
 const ball_radius = 10;
+let keyW;
+let keyD;
+let keyS;
+let keyA;
+let keyM;
+let multiplayer = true;
+let boxUpper = winHeight / 2 - winHeight / 6;
+let boxLower = winHeight / 2 + winHeight / 6;
 
 // Game Configuration
 var config = {
@@ -147,13 +151,14 @@ class Ball {
 }
 
 function goalBoxesCreation(x_init, x_fin, scene) {
-	verticalLine = new Paddle(x_init, winHeight / 2, 5, winHeight / 3, 0xffffff);
-	upperHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, winHeight / 2 - winHeight / 6, Math.abs(x_init - x_fin), 5, 0xffffff);
-	lowerHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, winHeight / 2 + winHeight / 6, Math.abs(x_init - x_fin), 5, 0xffffff);
+	verticalLine = new Paddle(x_init, winHeight / 2, 5, boxLower - boxUpper, 0xffffff);
+	upperHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, boxUpper, Math.abs(x_init - x_fin), 5, 0xffffff);
+	lowerHorLine = new Paddle((Math.max(x_init, x_fin) + Math.min(x_fin, x_init)) / 2, boxLower, Math.abs(x_init - x_fin), 5, 0xffffff);
 	verticalLine.set_physics(scene);
 	upperHorLine.set_physics(scene);
 	lowerHorLine.set_physics(scene);
 }
+
 
 //Preload function to load game assets (sounds or images)
 function preload(){
@@ -188,6 +193,11 @@ function create(){
 	
 	//Enable cursor keys for player movement
 	cursors = this.input.keyboard.createCursorKeys();
+	keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+	keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+	keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+	keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+	keyM = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
 	
 	//Create score display
 	playerScoreText = this.add.text(winWidth * 0.20, 20, 'Player: 0', { fontSize: '30px', fill: '#fff' });
@@ -196,48 +206,85 @@ function create(){
 
 //Update function for game logic
 function update() {
+
+	if (Phaser.Input.Keyboard.JustDown(keyM)) {
+   	 multiplayer = !multiplayer; // Toggle multiplayer mode
+	}
+	
 	//Move player paddle with up/down keys
-	if (cursors.up.isDown) {
+	if (keyW.isDown) {
 		player.moveUp();
 	}
-	else if (cursors.down.isDown) {
+	else if (keyS.isDown) {
 		player.moveDown();
 	}
 	else {
 		player.stop('y');
 	}
 	
-	if (cursors.right.isDown) {
+	if (keyD.isDown) {
 		player.moveRight();
 	}
-	else if (cursors.left.isDown) {
+	else if (keyA.isDown) {
 		player.moveLeft();
 	}
 	else {
 		player.stop('x');
 	}
-	//Simple AI: Move the AI paddle towards the ball
-	if (sphere.ball.y > opponent.paddle.y + opponent.radius / 2) {
-		opponent.moveDown();
-	}
-	else if (sphere.ball.y < opponent.paddle.y - opponent.radius / 2) {
-		opponent.moveUp();
+	
+	if (multiplayer) {
+		if (cursors.up.isDown) {
+			opponent.moveUp();
+		}
+		else if (cursors.down.isDown) {
+			opponent.moveDown();
+		}
+		else {
+			opponent.stop('y');
+		}
+	
+		if (cursors.right.isDown) {
+			opponent.moveRight();
+		}
+		else if (cursors.left.isDown) {
+			opponent.moveLeft();
+		}
+		else {
+			opponent.stop('x');
+		}
 	}
 	else {
-		opponent.stop('y');
+		//Simple AI: Move the AI paddle towards the ball
+		if ((sphere.ball.y > opponent.paddle.y + opponent.radius / 2) && (sphere.ball.y > boxUpper - opponent.radius) && (sphere.ball.y < boxLower + opponent.radius)) {
+			opponent.moveDown();
+		}
+		else if ((sphere.ball.y < opponent.paddle.y - opponent.radius / 2) && (sphere.ball.y < boxLower + opponent.radius) && (sphere.ball.y > boxUpper - opponent.radius)) {
+			opponent.moveUp();
+		}
+		else {
+			opponent.stop('y');
+		}
+		
+		if (sphere.ball.body.velocity.x > init_vel) {
+			sphere.ball.body.setDragX(170);
+		}
+		else {
+			sphere.ball.body.setDragX(0);
+		}
 	}
+	
 	
 	//Adds bounds for paddles to not go over the middle field
 	player.paddle.x = Phaser.Math.Clamp(player.paddle.x, 0, winWidth / 2 - player.radius);
 	opponent.paddle.x = Phaser.Math.Clamp(opponent.paddle.x, winWidth / 2 + opponent.radius, winWidth);	
 	
 	//Check if ball goes off left or right side to score points
-	if (sphere.ball.x <= 0 + ball_radius * 2) {
+	if ((sphere.ball.x <= 0 + ball_radius * 2) && (sphere.ball.y > winHeight / 2 - winHeight / 6) && (sphere.ball.y < winHeight / 2 + winHeight / 6)) {
 		sphere.resetBall();
 		opponentScore++;
 		opponentScoreText.setText('Opponent: ' + opponentScore);
 	}
-	else if (sphere.ball.x >= winWidth - (ball_radius * 2)) {
+	else if ((sphere.ball.x >= winWidth - (ball_radius * 2)) && (sphere.ball.y > winHeight / 2 - winHeight / 6) && (sphere.ball.y < winHeight / 2 + winHeight / 6)) {
 		sphere.resetBall();
 		playerScore++;
 		playerScoreText.setText('Player: ' + playerScore);
